@@ -1,54 +1,48 @@
-'use client'
+import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
 
-import { useState } from 'react'
-import { createClient } from '@/src/lib/supabase/client'
-import { useRouter } from 'next/navigation'
+export default async function HomePage() {
+  const supabase = await createClient()
 
-export default function SignupPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState(null)
-  const router = useRouter()
-  const supabase = createClient()
-
-  async function handleSignup(e) {
-    e.preventDefault()
-    setError(null)
-
-    const { error } = await supabase.auth.signUp({ email, password })
-
-    if (error) {
-      setError(error.message)
-    } else {
-      router.push('/login?message=Check your email to confirm your account')
-    }
-  }
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: events } = await supabase
+    .from('events')
+    .select('*')
+    .order('event_date', { ascending: true })
 
   return (
-    <div className="max-w-md mx-auto mt-20 p-6">
-      <h1 className="text-2xl font-bold mb-6">Sign Up</h1>
-      <form onSubmit={handleSignup} className="flex flex-col gap-4">
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="border rounded p-2"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="border rounded p-2"
-          required
-        />
-        {error && <p className="text-red-500 text-sm">{error}</p>}
-        <button type="submit" className="bg-black text-white rounded p-2">
-          Sign Up
-        </button>
-      </form>
+    <div className="max-w-2xl mx-auto mt-10 p-6">
+      <h1 className="text-3xl font-bold mb-8">Upcoming Club Events</h1>
+
+      {!events || events.length === 0 ? (
+        <p className="text-gray-500">No events yet. Check back soon!</p>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {events.map((event) => (
+            <div key={event.id} className="border rounded-lg p-4">
+              <h2 className="text-xl font-semibold">{event.title}</h2>
+              <p className="text-gray-500 text-sm">
+                {new Date(event.event_date).toLocaleString()}
+              </p>
+              <p className="mt-2">{event.description}</p>
+              <div className="mt-4">
+                {user ? (
+                  <Link
+                    href={`/events/${event.id}`}
+                    className="text-blue-600 underline"
+                  >
+                    View & Register
+                  </Link>
+                ) : (
+                  <p className="text-sm text-gray-400">
+                    <Link href="/login" className="underline">Log in</Link> to register
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
